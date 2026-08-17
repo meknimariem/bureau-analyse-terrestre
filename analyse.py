@@ -199,3 +199,53 @@ print(f"Stagiaire : exactitude {100*acc_stagiaire:.1f} %  |  rappel "
       f"{100*recall_score(yh_test, pred_stagiaire):.1f} %")
 print(f"Ton modèle: exactitude {100*acc_modele:.1f} %  |  rappel "
       f"{100*rappel_apres:.1f} %")
+
+
+# ===================== PHASE 7 : plusieurs témoins, un seul événement =====================
+from sklearn.model_selection import GroupShuffleSplit
+
+# Helper réutilisé aux phases suivantes : un modèle honnête neuf à chaque appel
+def construire_modele():
+    pre = ColumnTransformer([
+        ("num", SimpleImputer(strategy="median"), num),
+        ("cat", Pipeline([("imp", SimpleImputer(strategy="most_frequent")),
+                          ("oh", OneHotEncoder(handle_unknown="ignore"))]), cat)])
+    return Pipeline([("pre", pre),
+                     ("clf", LogisticRegression(max_iter=1000, class_weight="balanced"))])
+
+# Clé d'événement : même ville + même date-heure d'observation
+df["event"] = df["city"].fillna("?") + " | " + df["datetime"].fillna("?")
+tailles = df["event"].value_counts()
+
+print("\n===== PHASE 7 : témoins multiples =====")
+print(f"Événements signalés par +1 témoin : {int((tailles > 1).sum())}")
+print(f"Témoins pour le plus gros          : {int(tailles.max())}  ({tailles.idxmax()})")
+
+com_nv = df["comments"].fillna("")
+print(f"Témoignages en doublon exact       : {int((com_nv.duplicated(keep=False) & (com_nv != '')).sum())}")
+
+# Relevés à cheval dans la découpe au hasard (Phase 5)
+ev_app = set(df.loc[Xh_app.index, "event"])
+ev_test = set(df.loc[Xh_test.index, "event"])
+a_cheval = ev_app & ev_test
+print(f"Relevés à cheval (découpe hasard)  : {int(df['event'].isin(a_cheval).sum())}")
+
+# Nouvelle découpe : chaque événement entièrement d'un seul côté
+gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+i_app, i_test = next(gss.split(X_h, y_h, groups=df["event"]))
+modele_g = construire_modele().fit(X_h.iloc[i_app], y_h.iloc[i_app])
+pred_g = modele_g.predict(X_h.iloc[i_test])
+rappel_groupe = recall_score(y_h.iloc[i_test], pred_g)
+precision_groupe = precision_score(y_h.iloc[i_test], pred_g)
+
+print("\nDeux nombres de la phase 4 :")
+print(f"  découpe au hasard : rappel {100*rappel_apres:.1f} % | précision {100*precision_apres:.2f} %")
+print(f"  découpe par groupe: rappel {100*rappel_groupe:.1f} % | précision {100*precision_groupe:.2f} %")
+
+# Preuve : un événement entier, tous ses témoins du même côté
+gros = tailles.idxmax()
+pos = np.where((df["event"] == gros).values)[0]
+cote = ("apprentissage" if set(pos).issubset(set(i_app))
+        else "test" if set(pos).issubset(set(i_test)) else "À CHEVAL")
+print(f"\nLes {len(pos)} témoins de '{gros}' sont tous côté : {cote}")
+print(df.loc[df["event"] == gros, ["city", "datetime", "shape", "canular"]].to_string())
