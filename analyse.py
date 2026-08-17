@@ -116,3 +116,29 @@ print("   ex :", df["comments"][faux_pos].iloc[0][:80])
 # Limite 2 — rate : canulars annotés 'fake' mais pas 'hoax'
 rate = com.str.contains("fake", regex=False) & ~df["canular"]
 print(f"Ratés (marqués 'fake' sans 'hoax') : {rate.sum()}")
+# ===================== PHASE 4 : premier verdict (rappel & précision) =====================
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import recall_score, precision_score
+
+X = df["comments"].fillna("")
+y = df["canular"]
+
+# Découpe apprentissage / test (20 % pour tester, stratifiée pour garder des canulars des deux côtés)
+X_app, X_test, y_app, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y)
+
+# Le modèle apprend le texte des témoignages
+vec = TfidfVectorizer(max_features=5000)
+X_app_v = vec.fit_transform(X_app)
+X_test_v = vec.transform(X_test)
+
+modele = LogisticRegression(max_iter=1000, class_weight="balanced")
+modele.fit(X_app_v, y_app)
+pred = modele.predict(X_test_v)
+
+print("\n===== PHASE 4 : premier verdict =====")
+print(f"Relevés de test (jamais vus) : {len(y_test)} dont {y_test.sum()} canulars")
+print(f"Rappel    : {100 * recall_score(y_test, pred):.1f} %")
+print(f"Précision : {100 * precision_score(y_test, pred):.1f} %")
