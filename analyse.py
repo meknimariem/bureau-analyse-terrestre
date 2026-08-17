@@ -331,3 +331,15 @@ print(f"Largeur du tableau après encodage : {largeur} colonnes")
 print(f"Rappel FINAL    : {100*recall_score(df.loc[tst,'canular'], pred_final):.1f} %")
 print(f"Précision FINAL : {100*precision_score(df.loc[tst,'canular'], pred_final):.2f} %")
 print("Prédiction sur 1 relevé neuf :", modele_final.predict(df.loc[tst, num + cat].iloc[[0]])[0])
+
+
+# ==================== PHASE 11 : réconcilier les durées ====================
+both = df["duration_seconds"].notna() & (df["duration_seconds"] > 0) & sec_txt.notna()
+contra = both & ((df["duration_seconds"] - sec_txt).abs()
+                 / df["duration_seconds"].where(df["duration_seconds"] > 0) > 0.5)
+print("\n===== PHASE 11 : durées =====")
+print(f"Encore inutilisable          : {int(df['duree'].isna().sum())}")
+print(f"Récupérés (secondes=0 + texte): {int(recuperes.sum())}")
+print(f"Contradictions               : {int(contra.sum())}")
+print(f"Durée médiane                : {df['duree'].median():.0f} s")
+print(f"Relevés > 1 journée          : {int((df['duree'] >= 86400).sum())}")
