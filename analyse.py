@@ -310,3 +310,24 @@ for c in top3:
           f"SANS trou {100*df.loc[~trou,'canular'].mean():.3f}%")
 for c in ["country", "state", "duration_hours_min"]:      # traitement : indicateur de trou
     df[c + "_manque"] = df[c].replace("", np.nan).isna().astype(int)
+
+    # ==================== PHASE 10 : pipeline unique, sans fuite ====================
+num = ["duree", "latitude", "longitude", "heure_sin", "heure_cos",
+       "country_manque", "state_manque", "duration_hours_min_manque"]
+cat = ["shape2", "country", "ville"]
+pre = ColumnTransformer([
+    ("num", Pipeline([("imp", SimpleImputer(strategy="median")),
+                      ("sc", StandardScaler())]), num),
+    ("cat", Pipeline([("imp", SimpleImputer(strategy="most_frequent")),
+                      ("oh", OneHotEncoder(handle_unknown="ignore"))]), cat),
+])
+modele_final = Pipeline([("pre", pre),
+                         ("clf", LogisticRegression(max_iter=3000, class_weight="balanced"))])
+modele_final.fit(df.loc[app, num + cat], df.loc[app, "canular"])   # fit sur APP seul
+pred_final = modele_final.predict(df.loc[tst, num + cat])
+largeur = modele_final.named_steps["pre"].transform(df.loc[app, num + cat]).shape[1]
+print("\n===== PHASE 10 : pipeline final =====")
+print(f"Largeur du tableau après encodage : {largeur} colonnes")
+print(f"Rappel FINAL    : {100*recall_score(df.loc[tst,'canular'], pred_final):.1f} %")
+print(f"Précision FINAL : {100*precision_score(df.loc[tst,'canular'], pred_final):.2f} %")
+print("Prédiction sur 1 relevé neuf :", modele_final.predict(df.loc[tst, num + cat].iloc[[0]])[0])
