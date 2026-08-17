@@ -2,6 +2,7 @@ import os
 import time
 import urllib.request
 import pandas as pd
+from partie3 import executer_partie3
 
 CSV = "releves_klaxo3.csv"
 URL = ("https://cdn.jsdelivr.net/gh/planetsig/ufo-reports@master/"
@@ -251,7 +252,7 @@ print(f"\nLes {len(pos)} témoins de '{gros}' sont tous côté : {cote}")
 print(df.loc[df["event"] == gros, ["city", "datetime", "shape", "canular"]].to_string())
 
 
-python
+
 # =====================================================================
 # ============  PARTIE 2 : corrections du Conseil (8 à 12)  ============
 # =====================================================================
@@ -301,7 +302,7 @@ df["ville"] = df["city"].where(df["city"].map(vc_app).fillna(0) >= 20, "autre")
 
 # ==================== PHASE 9 : les trous comme signal ====================
 print("\n===== PHASE 9 : trous = signal =====")
-manquant = df[cols].replace("", np.nan).isna().sum().sort_values(ascending=False)
+manquant = df[COLS].replace("", np.nan).isna().sum().sort_values(ascending=False)
 top3 = manquant.head(3).index.tolist()
 print("Trois colonnes les plus trouées :", top3)
 for c in top3:
@@ -354,3 +355,5 @@ print(f"Villes : {df['city'].nunique()} distinctes -> {df['ville'].nunique()} co
       f"({int((vc_tot==1).sum())} vues 1 seule fois)")
 print(f"Distance 23h<->0h : {dist(23,0):.3f} | Distance 23h<->20h : {dist(23,20):.3f}")
 print(f"Formes : 29 -> {df['shape2'].nunique()}")
+# ===================== PARTIE 3 (module séparé) =====================
+executer_partie3(df, num, cat, app, tst, modele_final)
