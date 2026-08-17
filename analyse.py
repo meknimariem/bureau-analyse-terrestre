@@ -343,3 +343,14 @@ print(f"Récupérés (secondes=0 + texte): {int(recuperes.sum())}")
 print(f"Contradictions               : {int(contra.sum())}")
 print(f"Durée médiane                : {df['duree'].median():.0f} s")
 print(f"Relevés > 1 journée          : {int((df['duree'] >= 86400).sum())}")
+# ==================== PHASE 12 : ville, heure, forme ====================
+def dist(a, b):
+    ea = np.array([np.sin(2*np.pi*a/24), np.cos(2*np.pi*a/24)])
+    eb = np.array([np.sin(2*np.pi*b/24), np.cos(2*np.pi*b/24)])
+    return np.linalg.norm(ea - eb)
+vc_tot = df["city"].value_counts()
+print("\n===== PHASE 12 : ville, heure, forme =====")
+print(f"Villes : {df['city'].nunique()} distinctes -> {df['ville'].nunique()} colonnes "
+      f"({int((vc_tot==1).sum())} vues 1 seule fois)")
+print(f"Distance 23h<->0h : {dist(23,0):.3f} | Distance 23h<->20h : {dist(23,20):.3f}")
+print(f"Formes : 29 -> {df['shape2'].nunique()}")
