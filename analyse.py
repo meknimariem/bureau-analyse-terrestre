@@ -298,3 +298,15 @@ print(f"Prop canulars test    : {100*df.loc[tst,'canular'].mean():.3f} %")
 # ville réduite : fréquences apprises sur l'APPRENTISSAGE seul (pas de fuite)
 vc_app = df.loc[app, "city"].value_counts()
 df["ville"] = df["city"].where(df["city"].map(vc_app).fillna(0) >= 20, "autre")
+
+# ==================== PHASE 9 : les trous comme signal ====================
+print("\n===== PHASE 9 : trous = signal =====")
+manquant = df[cols].replace("", np.nan).isna().sum().sort_values(ascending=False)
+top3 = manquant.head(3).index.tolist()
+print("Trois colonnes les plus trouées :", top3)
+for c in top3:
+    trou = df[c].replace("", np.nan).isna()
+    print(f"  {c:20} AVEC trou {100*df.loc[trou,'canular'].mean():.3f}% | "
+          f"SANS trou {100*df.loc[~trou,'canular'].mean():.3f}%")
+for c in ["country", "state", "duration_hours_min"]:      # traitement : indicateur de trou
+    df[c + "_manque"] = df[c].replace("", np.nan).isna().astype(int)
