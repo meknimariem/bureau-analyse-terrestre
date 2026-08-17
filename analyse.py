@@ -183,3 +183,19 @@ precision_apres = precision_score(yh_test, pred_h)
 print("\n===== PHASE 5 : avant / après retrait de comments =====")
 print(f"Rappel    : {100*rappel_avant:5.1f} % (avant)  ->  {100*rappel_apres:5.1f} % (après)")
 print(f"Précision : {100*precision_avant:5.1f} % (avant)  ->  {100*precision_apres:5.1f} % (après)")
+
+# ===================== PHASE 6 : le modèle bête du stagiaire =====================
+import numpy as np
+from sklearn.metrics import accuracy_score
+
+# Le stagiaire répond "pas un canular" à tout le monde
+pred_stagiaire = np.zeros(len(yh_test), dtype=bool)
+
+acc_stagiaire = accuracy_score(yh_test, pred_stagiaire)
+acc_modele = accuracy_score(yh_test, pred_h)
+
+print("\n===== PHASE 6 : stagiaire vs vrai modèle =====")
+print(f"Stagiaire : exactitude {100*acc_stagiaire:.1f} %  |  rappel "
+      f"{100*recall_score(yh_test, pred_stagiaire):.1f} %")
+print(f"Ton modèle: exactitude {100*acc_modele:.1f} %  |  rappel "
+      f"{100*rappel_apres:.1f} %")
