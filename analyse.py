@@ -98,3 +98,21 @@ print(f"\nCoordonnées (0,0) 'Null Island' : {null_island}")
 
 # --- Contrôle : aucune ligne perdue ---
 print(f"\nNombre de lignes inchangé : {len(df)}")
+# ===================== PHASE 3 : fabriquer l'étiquette "canular" =====================
+# Règle : un relevé est un canular si son témoignage contient le mot "hoax".
+com = df["comments"].fillna("").str.lower()
+df["canular"] = com.str.contains("hoax", regex=False)
+
+print("\n===== PHASE 3 : étiquette canular =====")
+print("Règle : le témoignage (comments) contient 'hoax'")
+print(f"Canulars marqués : {df['canular'].sum()}")
+print(f"Proportion       : {100 * df['canular'].mean():.3f} %")
+
+# Limite 1 — attrape à tort : "not a hoax" est marqué canular
+faux_pos = com.str.contains("not a hoax", regex=False)
+print(f"\nAttrapés à tort ('not a hoax') : {faux_pos.sum()}")
+print("   ex :", df["comments"][faux_pos].iloc[0][:80])
+
+# Limite 2 — rate : canulars annotés 'fake' mais pas 'hoax'
+rate = com.str.contains("fake", regex=False) & ~df["canular"]
+print(f"Ratés (marqués 'fake' sans 'hoax') : {rate.sum()}")
