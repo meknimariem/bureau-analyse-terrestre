@@ -142,3 +142,44 @@ print("\n===== PHASE 4 : premier verdict =====")
 print(f"Relevés de test (jamais vus) : {len(y_test)} dont {y_test.sum()} canulars")
 print(f"Rappel    : {100 * recall_score(y_test, pred):.1f} %")
 print(f"Précision : {100 * precision_score(y_test, pred):.1f} %")
+# ===================== PHASE 5 : démasquer la fuite de données =====================
+# On mémorise d'abord les deux nombres de la Phase 4 (modèle AVEC comments)
+rappel_avant = recall_score(y_test, pred)
+precision_avant = precision_score(y_test, pred)
+
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+
+# Colonnes "honnêtes" : écrites AVANT tout jugement de canular
+df["duration_seconds"] = pd.to_numeric(df["duration_seconds"], errors="coerce")
+df["latitude"]  = pd.to_numeric(df["latitude"],  errors="coerce")
+df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
+dt = pd.to_datetime(df["datetime"].str.replace(" 24:00", " 00:00", regex=False),
+                    errors="coerce", format="mixed")
+df["heure"] = dt.dt.hour
+
+num = ["duration_seconds", "latitude", "longitude", "heure"]
+cat = ["shape", "country"]
+X_h, y_h = df[num + cat], df["canular"]
+
+Xh_app, Xh_test, yh_app, yh_test = train_test_split(
+    X_h, y_h, test_size=0.2, random_state=42, stratify=y_h)
+
+pre = ColumnTransformer([
+    ("num", SimpleImputer(strategy="median"), num),
+    ("cat", Pipeline([("imp", SimpleImputer(strategy="most_frequent")),
+                      ("oh", OneHotEncoder(handle_unknown="ignore"))]), cat),
+])
+modele_h = Pipeline([("pre", pre),
+                     ("clf", LogisticRegression(max_iter=1000, class_weight="balanced"))])
+modele_h.fit(Xh_app, yh_app)
+pred_h = modele_h.predict(Xh_test)
+
+rappel_apres = recall_score(yh_test, pred_h)
+precision_apres = precision_score(yh_test, pred_h)
+
+print("\n===== PHASE 5 : avant / après retrait de comments =====")
+print(f"Rappel    : {100*rappel_avant:5.1f} % (avant)  ->  {100*rappel_apres:5.1f} % (après)")
+print(f"Précision : {100*precision_avant:5.1f} % (avant)  ->  {100*precision_apres:5.1f} % (après)")
