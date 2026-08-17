@@ -249,3 +249,52 @@ cote = ("apprentissage" if set(pos).issubset(set(i_app))
         else "test" if set(pos).issubset(set(i_test)) else "À CHEVAL")
 print(f"\nLes {len(pos)} témoins de '{gros}' sont tous côté : {cote}")
 print(df.loc[df["event"] == gros, ["city", "datetime", "shape", "canular"]].to_string())
+
+
+python
+# =====================================================================
+# ============  PARTIE 2 : corrections du Conseil (8 à 12)  ============
+# =====================================================================
+import re
+from sklearn.preprocessing import StandardScaler
+
+# ---------- PRÉPARATION DES FEATURES (silencieux : rien n'est "appris" ici) ----------
+for c in ["latitude", "longitude", "duration_seconds"]:
+    df[c] = pd.to_numeric(df[c], errors="coerce")
+obs = pd.to_datetime(df["datetime"].str.replace(" 24:00", " 00:00", regex=False),
+                     errors="coerce", format="mixed")
+df["obs_date"] = obs
+_h = obs.dt.hour
+df["heure_sin"] = np.sin(2 * np.pi * _h / 24)     # (Phase 12) heure cyclique
+df["heure_cos"] = np.cos(2 * np.pi * _h / 24)
+
+def texte_en_secondes(t):                          # (Phase 11) parse du texte témoin
+    if not isinstance(t, str): return np.nan
+    s = t.lower(); m = re.search(r'(\d+(?:[.,]\d+)?)', s.replace('/', '.'))
+    if not m: return np.nan
+    v = float(m.group(1).replace(',', '.'))
+    return v * (1 if re.search(r'sec', s) else 60 if re.search(r'min', s)
+                else 3600 if re.search(r'hr|hour', s) else 86400 if re.search(r'day', s) else 60)
+
+sec_txt = df["duration_hours_min"].apply(texte_en_secondes)
+df["duree"] = df["duration_seconds"].copy()
+recuperes = ((df["duree"].isna()) | (df["duree"] == 0)) & sec_txt.notna()
+df.loc[recuperes, "duree"] = sec_txt[recuperes]
+df["duree"] = df["duree"].clip(upper=86400)        # décision : plafond 1 journée
+
+df["shape2"] = df["shape"].replace({"changed": "changing", "round": "circle"})  # (Phase 12)
+_cpt = df["shape2"].value_counts()
+df["shape2"] = df["shape2"].where(~df["shape2"].isin(_cpt[_cpt < 10].index), "other")
+
+# ==================== PHASE 8 : découpe temporelle ====================
+date_coupure = df["obs_date"].quantile(0.8)
+app = df["obs_date"] <= date_coupure
+tst = df["obs_date"] > date_coupure
+print("\n===== PHASE 8 : découpe temporelle =====")
+print(f"Date de coupure       : {date_coupure}")
+print(f"Relevés app / test    : {int(app.sum())} / {int(tst.sum())}")
+print(f"Prop canulars app     : {100*df.loc[app,'canular'].mean():.3f} %")
+print(f"Prop canulars test    : {100*df.loc[tst,'canular'].mean():.3f} %")
+# ville réduite : fréquences apprises sur l'APPRENTISSAGE seul (pas de fuite)
+vc_app = df.loc[app, "city"].value_counts()
+df["ville"] = df["city"].where(df["city"].map(vc_app).fillna(0) >= 20, "autre")
